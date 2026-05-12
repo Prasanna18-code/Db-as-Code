@@ -65,6 +65,8 @@ Treat the database schema exactly like application code:
 | GitHub Actions | — | CI/CD — automates migrations and tests on every push |
 | Kubernetes (Minikube) | Latest | Orchestration — manages DB pods and migration Jobs |
 | Terraform | Latest | Infrastructure as Code — provisions everything from .tf files |
+| Prometheus & Grafana | Latest | Monitoring & Observability — real-time database metrics |
+| SQLFluff | Latest | SQL Linter — enforces code quality in migrations |
 
 ---
 
@@ -86,10 +88,11 @@ Treat the database schema exactly like application code:
 ┌──────────────────────────────────────────────────────────────┐
 │  GITHUB ACTIONS CI/CD PIPELINE                               │
 │                                                              │
-│  Step 1 → Spin up ephemeral PostgreSQL container             │
-│  Step 2 → Run Flyway migrations on test database             │
-│  Step 3 → Run verify_schema.sql integration tests            │
-│  Step 4 → PASS: promote  |  FAIL: block merge immediately    │
+│  Step 1 → Lint migration files with SQLFluff                  │
+│  Step 2 → Spin up ephemeral PostgreSQL container             │
+│  Step 3 → Run Flyway migrations on test database             │
+│  Step 4 → Run verify_schema.sql integration tests            │
+│  Step 5 → PASS: promote  |  FAIL: block merge immediately    │
 └──────────────────────┬───────────────────────────────────────┘
                        │  on success only
                        ▼
@@ -152,11 +155,16 @@ db-as-code/
 ├── tests/
 │   └── verify_schema.sql                # Integration tests
 │
+├── monitoring/                          # Observability stack
+│   ├── prometheus.yml                   # Metrics scraping config
+│   └── grafana/                         # Dashboards and datasources
+│
 ├── .github/
 │   └── workflows/
 │       └── ci.yml                       # GitHub Actions pipeline
 │
-├── docker-compose.yml                   # Local development only
+├── .sqlfluff                            # SQL linter configuration
+├── docker-compose.yml                   # Local development with full stack
 └── README.md                            # This file
 ```
 
@@ -374,9 +382,9 @@ jobs:
 
 ### Pipeline flow
 ```
-git push → GitHub Actions triggers → PostgreSQL starts (ephemeral)
-→ Flyway applies all migrations → verify_schema.sql runs
-→ PASS ✅ safe to merge  |  FAIL ❌ merge blocked
+git push → GitHub Actions triggers → SQLFluff lints .sql files
+→ PostgreSQL starts (ephemeral) → Flyway applies all migrations
+→ verify_schema.sql runs → PASS ✅ safe to merge  |  FAIL ❌ merge blocked
 ```
 
 ---
@@ -672,6 +680,44 @@ END $$;
 
 ---
 
+## 🟢 Phase 8 — Monitoring & Observability
+
+**Purpose:** Provide real-time visibility into database health and performance, mimicking a production-ready observability stack.
+
+### Stack Components
+
+1. **Prometheus:** Scrapes and stores metrics every 15s.
+2. **postgres_exporter:** Translates PostgreSQL stats into Prometheus metrics.
+3. **Grafana:** Visualizes metrics on a pre-built, auto-provisioned dashboard.
+4. **pgAdmin:** Web-based UI for managing the database visually.
+
+### How to Run
+
+The monitoring stack is fully integrated into `docker-compose.yml`.
+
+```cmd
+docker-compose up -d
+```
+
+### Access Points
+
+| Service | URL | Credentials |
+|---------|-----|-------------|
+| **pgAdmin** | [http://localhost:5050](http://localhost:5050) | `admin@admin.com` / `admin` |
+| **Grafana** | [http://localhost:3000](http://localhost:3000) | `admin` / `admin` |
+| **Prometheus**| [http://localhost:9090](http://localhost:9090) | (None) |
+
+### Dashboard Highlights
+
+The auto-provisioned Grafana dashboard (`PostgreSQL — Database as Code`) shows:
+- Active vs. Max Connections
+- Database Size & Cache Hit Ratio
+- Transactions per Second (Commits/Rollbacks)
+- Row Operations (Inserts/Updates/Deletes)
+- Table Scans (Sequential vs. Index)
+
+---
+
 ## ➕ How to Add a New Migration
 
 ```
@@ -763,6 +809,13 @@ PHASE 6 — TERRAFORM
 [ ] terraform init succeeds
 [ ] terraform apply creates container
 [ ] Flyway runs against port 5433 successfully
+
+PHASE 8 — MONITORING & OBSERVABILITY
+[ ] SQLFluff linter configured (`.sqlfluff`)
+[ ] Prometheus and postgres_exporter configured
+[ ] Grafana dashboard auto-provisioning set up
+[ ] pgAdmin accessible at localhost:5050
+[ ] Grafana accessible at localhost:3000 with metrics flowing
 
 PHASE 7 — FINAL
 [ ] verify_schema.sql checks all tables and columns

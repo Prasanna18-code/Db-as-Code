@@ -1,0 +1,177 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "links": [],
+  "panels": [
+    {
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "green", "value": 1 }
+            ]
+          },
+          "mappings": [
+            { "options": { "0": { "text": "DOWN", "color": "red" }, "1": { "text": "UP", "color": "green" } }, "type": "value" }
+          ]
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 4, "w": 4, "x": 0, "y": 0 },
+      "id": 1,
+      "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "title": "PostgreSQL Status",
+      "type": "stat",
+      "targets": [{ "expr": "pg_up", "refId": "A" }]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 50 }, { "color": "red", "value": 80 }] },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 4, "w": 4, "x": 4, "y": 0 },
+      "id": 2,
+      "options": { "colorMode": "value", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "title": "Active Connections",
+      "type": "stat",
+      "targets": [{ "expr": "sum(pg_stat_activity_count)", "refId": "A" }]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "blue", "value": null }] },
+          "unit": "decbytes"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 4, "w": 4, "x": 8, "y": 0 },
+      "id": 3,
+      "options": { "colorMode": "value", "graphMode": "none", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "title": "Database Size",
+      "type": "stat",
+      "targets": [{ "expr": "pg_database_size_bytes{datname=\"myapp\"}", "refId": "A" }]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 4, "w": 4, "x": 12, "y": 0 },
+      "id": 4,
+      "options": { "colorMode": "value", "graphMode": "none", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "title": "Max Connections",
+      "type": "stat",
+      "targets": [{ "expr": "pg_settings_max_connections", "refId": "A" }]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "red", "value": 0.9 }] },
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 4, "w": 8, "x": 16, "y": 0 },
+      "id": 5,
+      "options": { "colorMode": "value", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "title": "Cache Hit Ratio",
+      "type": "stat",
+      "targets": [{ "expr": "pg_stat_database_blks_hit{datname=\"myapp\"} / (pg_stat_database_blks_hit{datname=\"myapp\"} + pg_stat_database_blks_read{datname=\"myapp\"})", "refId": "A" }]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" }, "custom": { "lineWidth": 2, "fillOpacity": 15, "gradientMode": "scheme", "showPoints": "auto", "pointSize": 5 }, "unit": "ops" },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
+      "id": 6,
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "title": "Transactions per Second",
+      "type": "timeseries",
+      "targets": [
+        { "expr": "rate(pg_stat_database_xact_commit{datname=\"myapp\"}[1m])", "legendFormat": "Commits", "refId": "A" },
+        { "expr": "rate(pg_stat_database_xact_rollback{datname=\"myapp\"}[1m])", "legendFormat": "Rollbacks", "refId": "B" }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" }, "custom": { "lineWidth": 2, "fillOpacity": 15, "gradientMode": "scheme", "showPoints": "auto", "pointSize": 5 }, "unit": "ops" },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
+      "id": 7,
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "title": "Row Operations per Second",
+      "type": "timeseries",
+      "targets": [
+        { "expr": "sum(rate(pg_stat_user_tables_n_tup_ins[1m]))", "legendFormat": "Inserts", "refId": "A" },
+        { "expr": "sum(rate(pg_stat_user_tables_n_tup_upd[1m]))", "legendFormat": "Updates", "refId": "B" },
+        { "expr": "sum(rate(pg_stat_user_tables_n_tup_del[1m]))", "legendFormat": "Deletes", "refId": "C" }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" }, "custom": { "lineWidth": 2, "fillOpacity": 10 }, "unit": "short" },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 12 },
+      "id": 8,
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "title": "Table Scans (Sequential vs Index)",
+      "type": "timeseries",
+      "targets": [
+        { "expr": "sum(rate(pg_stat_user_tables_seq_scan[1m]))", "legendFormat": "Sequential Scans", "refId": "A" },
+        { "expr": "sum(rate(pg_stat_user_tables_idx_scan[1m]))", "legendFormat": "Index Scans", "refId": "B" }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" }, "custom": { "lineWidth": 2, "fillOpacity": 10 }, "unit": "short" },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 },
+      "id": 9,
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "title": "Connections by State",
+      "type": "timeseries",
+      "targets": [
+        { "expr": "pg_stat_activity_count{datname=\"myapp\", state=\"active\"}", "legendFormat": "Active", "refId": "A" },
+        { "expr": "pg_stat_activity_count{datname=\"myapp\", state=\"idle\"}", "legendFormat": "Idle", "refId": "B" },
+        { "expr": "pg_stat_activity_count{datname=\"myapp\", state=\"idle in transaction\"}", "legendFormat": "Idle in Transaction", "refId": "C" }
+      ]
+    }
+  ],
+  "schemaVersion": 39,
+  "tags": ["postgresql", "database", "db-as-code"],
+  "templating": { "list": [] },
+  "time": { "from": "now-1h", "to": "now" },
+  "title": "PostgreSQL — Database as Code",
+  "uid": "db-as-code-postgres",
+  "version": 1
+}
