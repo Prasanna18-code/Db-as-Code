@@ -2,15 +2,10 @@ name: Database CI/CD Pipeline
 
 on:
   push:
-    branches:
-      - main
-  pull_request:
-    branches:
-      - main
+    branches: [main]
 
 jobs:
   db-migrations:
-    name: Database Migrations and Validation
     runs-on: ubuntu-latest
 
     services:
@@ -22,24 +17,15 @@ jobs:
           POSTGRES_PASSWORD: password123
         ports:
           - 5432:5432
-        # Ensure postgres is ready before starting the job
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
 
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Install PostgreSQL Client
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y postgresql-client
+      - name: Wait for DB
+        run: sleep 10
 
-      - name: Run Flyway Migrations
-        # Using Docker directly to run flyway image as specified
+      - name: Run Flyway
         run: |
           docker run --rm \
             --network host \
@@ -50,9 +36,10 @@ jobs:
             -password=password123 \
             migrate
 
-      - name: Verify Database Schema
-        env:
-          PGPASSWORD: password123
+      - name: Verify Tables
         run: |
-          echo "Verifying schema with tests/verify_schema.sql..."
-          psql -h localhost -U flyway_user -d mydatabase -f tests/verify_schema.sql
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+          PGPASSWORD=password123 psql \
+            -h localhost -U flyway_user -d mydatabase \
+            -f tests/verify_schema.sql
