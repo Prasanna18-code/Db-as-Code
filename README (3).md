@@ -67,6 +67,7 @@ Treat the database schema exactly like application code:
 | Terraform | Latest | Infrastructure as Code — provisions everything from .tf files |
 | Prometheus & Grafana | Latest | Monitoring & Observability — real-time database metrics |
 | SQLFluff | Latest | SQL Linter — enforces code quality in migrations |
+| Trivy | Latest | Security Scanner — scans repository for hardcoded secrets and IaC vulnerabilities |
 
 ---
 
@@ -89,10 +90,11 @@ Treat the database schema exactly like application code:
 │  GITHUB ACTIONS CI/CD PIPELINE                               │
 │                                                              │
 │  Step 1 → Lint migration files with SQLFluff                  │
-│  Step 2 → Spin up ephemeral PostgreSQL container             │
-│  Step 3 → Run Flyway migrations on test database             │
-│  Step 4 → Run verify_schema.sql integration tests            │
-│  Step 5 → PASS: promote  |  FAIL: block merge immediately    │
+│  Step 2 → Scan with Trivy (Secrets & IaC Vulnerabilities)     │
+│  Step 3 → Spin up ephemeral PostgreSQL container             │
+│  Step 4 → Run Flyway migrations on test database             │
+│  Step 5 → Run verify_schema.sql integration tests            │
+│  Step 6 → PASS: promote  |  FAIL: block merge immediately    │
 └──────────────────────┬───────────────────────────────────────┘
                        │  on success only
                        ▼
@@ -332,7 +334,7 @@ git push -u origin main
 ### .github/workflows/ci.yml
 
 ```yaml
-name: Schema Migration CI
+name: Database CI/CD Pipeline
 
 on:
   push:
@@ -341,16 +343,48 @@ on:
     branches: [main]
 
 jobs:
-  migrate:
+  sql-lint:
+    name: SQL Lint (SQLFluff)
     runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Install SQLFluff
+        run: pip install sqlfluff
+
+      - name: Lint Migration Files
+        run: sqlfluff lint migrations/ --dialect postgres
+
+  security-scan:
+    name: Security Scan (Trivy)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Run Trivy Vulnerability & Secret Scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          hide-skipped-rules: true
+          exit-code: '0' # Set to '1' if you want to fail the build on finding high/critical vulnerabilities
+          severity: 'CRITICAL,HIGH'
+
+  db-migrations:
+    name: Flyway Migrations
+    runs-on: ubuntu-latest
+    needs: [sql-lint, security-scan]
 
     services:
       postgres:
         image: postgres:16
         env:
-          POSTGRES_DB: testdb
-          POSTGRES_USER: ci
-          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: mydatabase
+          POSTGRES_USER: flyway_user
+          POSTGRES_PASSWORD: password123
         ports:
           - 5432:5432
         options: >-
@@ -360,31 +394,38 @@ jobs:
           --health-retries 5
 
     steps:
-      - name: Checkout code
+      - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Run Flyway migrations
+      - name: Run Flyway Migrations
         run: |
           docker run --rm \
             --network host \
             -v ${{ github.workspace }}/migrations:/flyway/sql \
             flyway/flyway:10 \
-            -url=jdbc:postgresql://localhost:5432/testdb \
-            -user=ci -password=ci \
+            -url=jdbc:postgresql://localhost:5432/mydatabase \
+            -user=flyway_user \
+            -password=password123 \
             migrate
 
-      - name: Run integration tests
+      - name: Verify Schema
         run: |
-          PGPASSWORD=ci psql \
-            -h localhost -U ci -d testdb \
+          sudo apt-get update && sudo apt-get install -y postgresql-client
+          PGPASSWORD=password123 psql \
+            -h localhost -U flyway_user -d mydatabase \
             -f tests/verify_schema.sql
 ```
 
 ### Pipeline flow
 ```
-git push → GitHub Actions triggers → SQLFluff lints .sql files
-→ PostgreSQL starts (ephemeral) → Flyway applies all migrations
-→ verify_schema.sql runs → PASS ✅ safe to merge  |  FAIL ❌ merge blocked
+git push → GitHub Actions triggers 
+         ├── SQLFluff Job: Lints database migration scripts (Parallel)
+         └── Trivy Job: Scrapes codebase for secrets and IaC vulnerability risks (Parallel)
+         ↓  (On both passing successfully)
+         → PostgreSQL starts (ephemeral) 
+         → Flyway applies all migrations 
+         → verify_schema.sql runs 
+         → PASS ✅ safe to merge  |  FAIL ❌ merge blocked
 ```
 
 ---
