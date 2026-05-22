@@ -3,10 +3,28 @@ name: Database CI/CD Pipeline
 on:
   push:
     branches: [main]
+  pull_request:
+    branches: [main]
 
 jobs:
-  db-migrations:
+  sql-lint:
+    name: SQL Lint (SQLFluff)
     runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Install SQLFluff
+        run: pip install sqlfluff
+
+      - name: Lint Migration Files
+        run: sqlfluff lint migrations/ --dialect postgres
+
+  db-migrations:
+    name: Flyway Migrations
+    runs-on: ubuntu-latest
+    needs: sql-lint
 
     services:
       postgres:
@@ -17,15 +35,17 @@ jobs:
           POSTGRES_PASSWORD: password123
         ports:
           - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
 
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Wait for DB
-        run: sleep 10
-
-      - name: Run Flyway
+      - name: Run Flyway Migrations
         run: |
           docker run --rm \
             --network host \
@@ -36,10 +56,9 @@ jobs:
             -password=password123 \
             migrate
 
-      - name: Verify Tables
+      - name: Verify Schema
         run: |
-          sudo apt-get update
-          sudo apt-get install -y postgresql-client
+          sudo apt-get update && sudo apt-get install -y postgresql-client
           PGPASSWORD=password123 psql \
             -h localhost -U flyway_user -d mydatabase \
             -f tests/verify_schema.sql
